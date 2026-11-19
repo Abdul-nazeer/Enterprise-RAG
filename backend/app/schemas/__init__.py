@@ -13,10 +13,30 @@ from app.schemas.session import (
     SessionUpdate,
     SessionList,
 )
+from app.schemas.user import (
+    UserCreate,
+    UserLogin,
+    UserResponse,
+    UserUpdate,
+    PasswordChange,
+    TokenResponse,
+    TokenRefresh,
+    UserWithToken,
+)
 
 __all__ = [
+    # Session schemas
     "SessionCreate",
     "SessionResponse",
     "SessionUpdate",
     "SessionList",
+    # User schemas
+    "UserCreate",
+    "UserLogin",
+    "UserResponse",
+    "UserUpdate",
+    "PasswordChange",
+    "TokenResponse",
+    "TokenRefresh",
+    "UserWithToken",
 ]
