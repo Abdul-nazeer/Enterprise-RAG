@@ -33,7 +33,7 @@ Base = declarative_base()
 # - Better concurrency (handle more users)
 
 engine: AsyncEngine = create_async_engine(
-    settings.DATABASE_URL,
+    settings.DATABASE_URL.replace("?sslmode=require", "?ssl=require"),
     echo=settings.DB_ECHO,  # Log SQL queries (debug only)
     future=True,  # Use SQLAlchemy 2.0 style
     pool_size=5,  # Connection pool size
