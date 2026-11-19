@@ -13,7 +13,10 @@ Key Concepts:
 """
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
-from app.core.config import settings
+from sqlalchemy import text
+from app.core.config import get_settings
+
+settings = get_settings()
 
 # ============================================
 # Declarative Base
@@ -84,3 +87,28 @@ async def get_db() -> AsyncSession:
             raise
         finally:
             await session.close()  # Always close session
+
+
+# ============================================
+# Lifecycle Management
+# ============================================
+
+async def init_db() -> None:
+    """
+    Initialize database connection pool
+    
+    Called on application startup
+    """
+    # Engine is already created above, just verify connection
+    async with engine.begin() as conn:
+        # Test connection
+        await conn.execute(text("SELECT 1"))
+
+
+async def close_db() -> None:
+    """
+    Close database connection pool
+    
+    Called on application shutdown
+    """
+    await engine.dispose()
