@@ -30,10 +30,17 @@ langgraph==0.0.19
 langfuse==2.6.3
 
 # Document Processing
-PyMuPDF==1.23.9
-python-docx==1.1.0
-Pillow==10.2.0
-python-magic==0.4.27
+PyMuPDF==1.23.9  # PDF parsing (faster than PyPDF2)
+python-docx==1.1.0  # DOCX parsing
+Pillow==10.2.0  # Image processing
+python-magic==0.4.27  # File type detection
+pytesseract==0.3.10  # OCR for images
+pdfplumber==0.11.0  # Alternative PDF parser (better for tables)
+mammoth==1.6.0  # Better DOCX to HTML conversion
+beautifulsoup4==4.12.3  # HTML parsing
+lxml==5.1.0  # XML/HTML parser (faster)
+chardet==5.2.0  # Character encoding detection
+filetype==1.2.0  # MIME type detection
 
 # Background Jobs
 celery==5.3.6
