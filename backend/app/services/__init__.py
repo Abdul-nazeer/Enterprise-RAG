@@ -8,7 +8,9 @@ Design Decision: Service Layer Pattern because:
 4. Single Responsibility Principle
 """
 from app.services.session_service import SessionService
+from app.services.auth_service import AuthService
 
 __all__ = [
     "SessionService",
+    "AuthService",
 ]
