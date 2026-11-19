@@ -144,6 +144,11 @@ def retry_on_llm_error(max_attempts: int = 2):
     )
 
 
+# Convenience aliases for common patterns
+with_db_retry = retry_on_database_error
+with_cache_retry = retry_on_transient_error
+
+
 # Example usage patterns:
 """
 # Pattern 1: Database operation with retry
