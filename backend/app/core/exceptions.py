@@ -126,6 +126,29 @@ class SessionLimitExceededException(SessionException):
         )
 
 
+class SessionStateException(SessionException):
+    """Invalid session state transition"""
+    def __init__(self, message: str):
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+# ============================================
+# Cache Exceptions
+# ============================================
+
+class CacheException(BaseAppException):
+    """Base cache error (Redis)"""
+    def __init__(self, message: str, details: Optional[dict] = None):
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            details=details
+        )
+
+
 # ============================================
 # Upload Exceptions
 # ============================================
