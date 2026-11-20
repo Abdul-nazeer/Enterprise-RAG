@@ -20,7 +20,7 @@ from app.core.config import get_settings
 from app.core.exceptions import BaseAppException
 from app.db.base import close_db, init_db
 from app.db.redis import init_redis, close_redis
-from app.api.routes import auth, sessions
+from app.api.routes import auth, sessions, documents
 
 settings = get_settings()
 
@@ -223,6 +223,7 @@ async def root():
 # Include routers
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(sessions.router, prefix="/api/v1")
+app.include_router(documents.router, prefix="/api/v1")
 
 
 # ============================================
