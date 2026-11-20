@@ -548,3 +548,27 @@ def get_chunker(strategy: str, **kwargs) -> ChunkingStrategy:
     
     chunker_class = strategies.get(strategy, FixedSizeChunker)
     return chunker_class(**kwargs)
+
+
+
+class ChunkerFactory:
+    """
+    Factory for creating chunking strategies
+    
+    Design Pattern: Factory + Facade
+    Simplifies chunker creation with sensible defaults
+    """
+    
+    @staticmethod
+    def create_chunker(strategy: str, **kwargs) -> ChunkingStrategy:
+        """
+        Create chunker instance
+        
+        Args:
+            strategy: 'fixed', 'sentence', 'paragraph', or 'code'
+            **kwargs: Strategy-specific parameters
+        
+        Returns:
+            ChunkingStrategy instance
+        """
+        return get_chunker(strategy, **kwargs)

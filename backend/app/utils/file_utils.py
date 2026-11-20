@@ -99,10 +99,7 @@ MIME_TO_TYPE = {
 }
 
 
-def detect_file_type(
-    file_path: str,
-    original_filename: str
-) -> Tuple[DocumentType, float]:
+def detect_file_type(file_path: Path) -> str:
     """
     Detect file type using multiple methods
     
@@ -114,10 +111,14 @@ def detect_file_type(
     5. Return highest confidence detection
     
     Returns:
-        (DocumentType, confidence_score)
+        String representation of file type (e.g., 'application/pdf')
     
     Time Complexity: O(1) for extension, O(n) for content analysis
     """
+    # Convert to string for compatibility
+    file_path_str = str(file_path)
+    original_filename = file_path.name
+    
     detections = []
     
     # Method 1: File extension
@@ -127,7 +128,7 @@ def detect_file_type(
     
     # Method 2: filetype library (magic bytes)
     try:
-        kind = filetype.guess(file_path)
+        kind = filetype.guess(file_path_str)
         if kind is not None:
             mime = kind.mime
             if mime in MIME_TO_TYPE:
@@ -144,9 +145,9 @@ def detect_file_type(
         pass
     
     # Method 4: Content analysis for text files
-    if _is_text_file(file_path):
+    if _is_text_file(file_path_str):
         # Check if it's code, markdown, or plain text
-        with open(file_path, 'rb') as f:
+        with open(file_path_str, 'rb') as f:
             content = f.read(4096)  # Read first 4KB
             
         try:
@@ -166,13 +167,13 @@ def detect_file_type(
         except:
             detections.append((DocumentType.TXT, 0.6, 'text_fallback'))
     
-    # Return detection with highest confidence
+    # Return detection with highest confidence (as string)
     if detections:
         best_detection = max(detections, key=lambda x: x[1])
-        return best_detection[0], best_detection[1]
+        return str(best_detection[0].value) if hasattr(best_detection[0], 'value') else str(best_detection[0])
     
     # Fallback: UNKNOWN
-    return DocumentType.UNKNOWN, 0.0
+    return 'unknown'
 
 
 def _is_text_file(file_path: str, sample_size: int = 8192) -> bool:
@@ -239,25 +240,6 @@ def _has_code_patterns(text: str) -> bool:
     threshold = len(code_indicators) * 0.3
     return matches >= threshold
 
-
-def validate_file_size(file_size: int) -> Tuple[bool, Optional[str]]:
-    """
-    Validate file size against limits
-    
-    Returns:
-        (is_valid, error_message)
-    """
-    max_size = settings.MAX_FILE_SIZE_BYTES
-    
-    if file_size == 0:
-        return False, "File is empty"
-    
-    if file_size > max_size:
-        max_mb = max_size / (1024 * 1024)
-        actual_mb = file_size / (1024 * 1024)
-        return False, f"File size ({actual_mb:.1f}MB) exceeds limit of {max_mb:.0f}MB"
-    
-    return True, None
 
 
 def get_safe_filename(filename: str) -> str:
@@ -326,3 +308,83 @@ def get_file_extension_from_type(doc_type: DocumentType) -> str:
         DocumentType.UNKNOWN: '.bin',
     }
     return extension_map.get(doc_type, '.bin')
+
+
+
+async def save_uploaded_file(file: BinaryIO, filename: str) -> Path:
+    """
+    Save uploaded file to temporary location
+    
+    Args:
+        file: File binary stream
+        filename: Original filename
+    
+    Returns:
+        Path to saved temporary file
+    
+    Security: Use safe filename and temp directory
+    """
+    import tempfile
+    import shutil
+    
+    # Get safe filename
+    safe_name = get_safe_filename(filename)
+    
+    # Create temp directory if doesn't exist
+    temp_dir = Path(tempfile.gettempdir()) / "rag_uploads"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Generate unique filename to avoid collisions
+    import uuid
+    unique_name = f"{uuid.uuid4()}_{safe_name}"
+    temp_path = temp_dir / unique_name
+    
+    # Save file
+    with open(temp_path, 'wb') as buffer:
+        shutil.copyfileobj(file, buffer)
+    
+    return temp_path
+
+
+def get_file_hash(file_path: Path) -> str:
+    """
+    Calculate SHA-256 hash of file for deduplication
+    
+    Args:
+        file_path: Path to file
+    
+    Returns:
+        Hex string of file hash
+    
+    Time Complexity: O(n) where n = file size
+    """
+    import hashlib
+    
+    sha256_hash = hashlib.sha256()
+    
+    with open(file_path, 'rb') as f:
+        # Read file in chunks to handle large files
+        for byte_block in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(byte_block)
+    
+    return sha256_hash.hexdigest()
+
+
+def validate_file_size(file_size: int, max_size: int) -> None:
+    """
+    Validate file size and raise exception if invalid
+    
+    Args:
+        file_size: Size in bytes
+        max_size: Maximum allowed size in bytes
+    
+    Raises:
+        FileTooLargeException: If file too large
+    """
+    from app.core.exceptions import FileTooLargeException
+    
+    if file_size == 0:
+        raise FileTooLargeException(file_size, max_size)
+    
+    if file_size > max_size:
+        raise FileTooLargeException(file_size, max_size)

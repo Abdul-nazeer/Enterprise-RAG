@@ -79,6 +79,7 @@ class Settings(BaseSettings):
     SESSION_TTL_HOURS: int = 24  # Auto-delete after 24 hours inactive
     MAX_UPLOAD_SIZE_MB: int = 50  # Max file size per upload
     MAX_FILES_PER_SESSION: int = 100
+    MAX_DOCUMENTS_PER_SESSION: int = 100  # Max documents per session
     
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
