@@ -29,11 +29,32 @@ langchain==0.1.4
 langgraph==0.0.19
 langfuse==2.6.3
 
-# Document Processing
-PyMuPDF==1.23.9
-python-docx==1.1.0
-Pillow==10.2.0
-python-magic==0.4.27
+# Document Processing (Best-in-Class)
+PyMuPDF==1.23.9  # PDF parsing (faster than PyPDF2)
+pdfplumber==0.11.0  # Advanced PDF parsing (tables, layout)
+python-docx==1.1.0  # DOCX parsing
+mammoth==1.6.0  # Better DOCX to HTML conversion
+docx2txt==0.8  # Fast DOCX text extraction
+Pillow==10.2.0  # Image processing
+python-magic==0.4.27  # File type detection
+filetype==1.2.0  # MIME type detection
+chardet==5.2.0  # Character encoding detection
+
+# OCR & Vision (Production-Grade)
+paddleocr==2.7.3  # Best OCR library (better than Tesseract)
+paddlepaddle>=2.6.2  # PaddleOCR backend (use compatible version)
+easyocr==1.7.1  # Alternative OCR (deep learning)
+# Note: Install paddlepaddle-gpu for GPU support
+
+# Advanced Document Understanding
+unstructured[all-docs]==0.12.0  # AI-powered document parsing
+# unstructured[local-inference]==0.12.0  # For local models
+
+# Additional Utilities
+beautifulsoup4==4.12.3  # HTML parsing
+lxml==5.1.0  # XML/HTML parser (faster)
+markdown==3.5.2  # Markdown parsing
+pymdown-extensions==10.7  # Extended markdown support
 
 # Background Jobs
 celery==5.3.6

@@ -304,3 +304,33 @@ class CacheException(ExternalServiceException):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             details={"error": error}
         )
+
+
+# ============================================
+# Document Parsing Exceptions
+# ============================================
+
+class ParsingException(BaseAppException):
+    """Base document parsing error"""
+    def __init__(
+        self,
+        message: str,
+        parser_type: str,
+        file_path: str,
+        original_error: Optional[Exception] = None
+    ):
+        details = {
+            "parser_type": parser_type,
+            "file_path": file_path,
+        }
+        if original_error:
+            details["original_error"] = str(original_error)
+        
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            details=details
+        )
+        self.parser_type = parser_type
+        self.file_path = file_path
+        self.original_error = original_error
