@@ -171,18 +171,25 @@ class ParserFactory:
         
         # Import parsers here to avoid circular imports
         from app.parsers.pdf_parser import PDFParser
-        from app.parsers.image_parser import ImageParser
         from app.parsers.docx_parser import DOCXParser
         from app.parsers.text_parser import TextParser
         from app.parsers.code_parser import CodeParser
         from app.parsers.mermaid_parser import MermaidParser
+        
+        # Try to import ImageParser (requires paddleocr/easyocr)
+        try:
+            from app.parsers.image_parser import ImageParser
+            has_image_parser = True
+        except ImportError:
+            has_image_parser = False
         
         # Register parsers in order of specificity (most specific first)
         cls.register_parser(MermaidParser())  # Most specific
         cls.register_parser(CodeParser())
         cls.register_parser(PDFParser())
         cls.register_parser(DOCXParser())
-        cls.register_parser(ImageParser())
+        if has_image_parser:
+            cls.register_parser(ImageParser())
         cls.register_parser(TextParser())  # Most generic (fallback)
         
         cls._initialized = True

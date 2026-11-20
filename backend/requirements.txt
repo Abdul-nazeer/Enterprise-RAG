@@ -42,7 +42,7 @@ chardet==5.2.0  # Character encoding detection
 
 # OCR & Vision (Production-Grade)
 paddleocr==2.7.3  # Best OCR library (better than Tesseract)
-paddlepaddle==2.6.0  # PaddleOCR backend
+paddlepaddle>=2.6.2  # PaddleOCR backend (use compatible version)
 easyocr==1.7.1  # Alternative OCR (deep learning)
 # Note: Install paddlepaddle-gpu for GPU support
 

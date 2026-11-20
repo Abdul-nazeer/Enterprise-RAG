@@ -20,6 +20,7 @@ Algorithm:
 Time Complexity: O(n) where n = image size
 """
 import time
+from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from PIL import Image, ImageEnhance, ImageFilter
 import numpy as np
@@ -42,10 +43,15 @@ class ImageParser(BaseParser):
     
     def __init__(self):
         super().__init__()
+        self.supported_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.tif', '.webp'}
         self._ocr_engine = None
         self._easyocr_reader = None
     
-    def parse(self, file_path: str, **kwargs) -> ParseResult:
+    def can_parse(self, file_path: Path) -> bool:
+        """Check if file is an image."""
+        return file_path.suffix.lower() in self.supported_extensions
+    
+    def parse(self, file_path: Path, **kwargs) -> ParseResult:
         """
         Parse image with OCR
         
@@ -56,8 +62,11 @@ class ImageParser(BaseParser):
         """
         start_time = time.time()
         
+        # Convert to string
+        file_path_str = str(file_path)
+        
         # Validate file
-        if not self.validate_file(file_path):
+        if not file_path.exists() or not file_path.is_file():
             return self._create_error_result(f"Invalid file: {file_path}")
         
         try:
@@ -67,7 +76,7 @@ class ImageParser(BaseParser):
             min_confidence = kwargs.get('min_confidence', 0.5)
             
             # Load and preprocess image
-            image = self._load_image(file_path)
+            image = self._load_image(file_path_str)
             if enhance:
                 image = self._preprocess_image(image)
             
@@ -354,7 +363,3 @@ class ImageParser(BaseParser):
         except Exception:
             return []
 
-
-# Register parser
-from app.parsers.base import ParserFactory
-ParserFactory.register_parser('image', ImageParser)

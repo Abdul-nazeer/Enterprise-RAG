@@ -15,9 +15,15 @@ Algorithm:
 Time Complexity: O(n) where n = number of pages
 """
 import time
-import fitz  # PyMuPDF
-import pdfplumber
+from pathlib import Path
 from typing import List, Dict, Any, Optional
+
+try:
+    import fitz  # PyMuPDF
+    import pdfplumber
+    HAS_PDF_LIBS = True
+except ImportError:
+    HAS_PDF_LIBS = False
 from pathlib import Path
 
 from app.parsers.base import BaseParser, ParseResult
@@ -39,8 +45,13 @@ class PDFParser(BaseParser):
     def __init__(self):
         super().__init__()
         self.min_text_threshold = 100  # Min chars to consider valid extraction
+        self.supported_extensions = {'.pdf'}
     
-    def parse(self, file_path: str, **kwargs) -> ParseResult:
+    def can_parse(self, file_path: Path) -> bool:
+        """Check if file is a PDF."""
+        return file_path.suffix.lower() == '.pdf'
+    
+    def parse(self, file_path: Path, **kwargs) -> ParseResult:
         """
         Parse PDF document
         
@@ -49,10 +60,16 @@ class PDFParser(BaseParser):
             extract_images: bool = False
             ocr_scanned: bool = True
         """
+        if not HAS_PDF_LIBS:
+            return self._create_error_result("PDF libraries not installed (PyMuPDF, pdfplumber)")
+        
         start_time = time.time()
         
+        # Convert to string for compatibility with fitz/pdfplumber
+        file_path_str = str(file_path)
+        
         # Validate file
-        if not self.validate_file(file_path):
+        if not file_path.exists() or not file_path.is_file():
             return self._create_error_result(f"Invalid file: {file_path}")
         
         try:
@@ -63,14 +80,14 @@ class PDFParser(BaseParser):
             
             # Try PyMuPDF first (fastest)
             result = self._parse_with_pymupdf(
-                file_path,
+                file_path_str,
                 extract_images=extract_images
             )
             
             # Check if extraction quality is good
             if len(result.text) < self.min_text_threshold:
                 # Try pdfplumber (better for complex layouts)
-                result = self._parse_with_pdfplumber(file_path)
+                result = self._parse_with_pdfplumber(file_path_str)
                 
                 # Still poor quality? Might be scanned
                 if len(result.text) < self.min_text_threshold and ocr_scanned:
@@ -79,7 +96,7 @@ class PDFParser(BaseParser):
             
             # Extract tables (pdfplumber is best for this)
             if extract_tables and result.success:
-                tables = self._extract_tables(file_path)
+                tables = self._extract_tables(file_path_str)
                 result.tables = tables
                 result.metadata['has_tables'] = len(tables) > 0
             
@@ -291,7 +308,3 @@ class PDFParser(BaseParser):
         except Exception:
             return False
 
-
-# Register parser
-from app.parsers.base import ParserFactory
-ParserFactory.register_parser('pdf', PDFParser)
