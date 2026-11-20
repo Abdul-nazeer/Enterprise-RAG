@@ -80,7 +80,7 @@ class BaseParser(ABC):
         self.parser_name = self.__class__.__name__
     
     @abstractmethod
-    def parse(self, file_path: str, **kwargs) -> ParseResult:
+    def parse(self, file_path: Path, **kwargs) -> ParseResult:
         """
         Parse document and return structured result
         
@@ -93,6 +93,19 @@ class BaseParser(ABC):
         
         Raises:
             Should catch exceptions and return ParseResult with error
+        """
+        pass
+    
+    @abstractmethod
+    def can_parse(self, file_path: Path) -> bool:
+        """
+        Check if this parser can handle the given file
+        
+        Args:
+            file_path: Path to check
+        
+        Returns:
+            True if parser can handle this file
         """
         pass
     
@@ -144,33 +157,98 @@ class ParserFactory:
     """
     Factory to get appropriate parser for file type
     
-    Design Pattern: Factory Pattern
+    Design Pattern: Factory Pattern with auto-registration
     """
     
-    _parsers = {}
+    _parsers: List[BaseParser] = []
+    _initialized: bool = False
     
     @classmethod
-    def register_parser(cls, file_type: str, parser_class: type):
-        """Register parser for file type"""
-        cls._parsers[file_type.lower()] = parser_class
+    def _initialize_parsers(cls) -> None:
+        """Initialize and register all available parsers"""
+        if cls._initialized:
+            return
+        
+        # Import parsers here to avoid circular imports
+        from app.parsers.pdf_parser import PDFParser
+        from app.parsers.image_parser import ImageParser
+        from app.parsers.docx_parser import DOCXParser
+        from app.parsers.text_parser import TextParser
+        from app.parsers.code_parser import CodeParser
+        from app.parsers.mermaid_parser import MermaidParser
+        
+        # Register parsers in order of specificity (most specific first)
+        cls.register_parser(MermaidParser())  # Most specific
+        cls.register_parser(CodeParser())
+        cls.register_parser(PDFParser())
+        cls.register_parser(DOCXParser())
+        cls.register_parser(ImageParser())
+        cls.register_parser(TextParser())  # Most generic (fallback)
+        
+        cls._initialized = True
     
     @classmethod
-    def get_parser(cls, file_type: str) -> Optional[BaseParser]:
+    def register_parser(cls, parser: BaseParser) -> None:
+        """Register a parser instance"""
+        cls._parsers.append(parser)
+    
+    @classmethod
+    def get_parser(cls, file_path: Path) -> Optional[BaseParser]:
         """
-        Get parser instance for file type
+        Get appropriate parser for file
         
         Args:
-            file_type: File type (e.g., 'pdf', 'docx', 'image')
+            file_path: Path to file
         
         Returns:
-            Parser instance or None if not found
+            Parser instance that can handle the file, or None
         """
-        parser_class = cls._parsers.get(file_type.lower())
-        if parser_class:
-            return parser_class()
+        cls._initialize_parsers()
+        
+        for parser in cls._parsers:
+            if parser.can_parse(file_path):
+                return parser
         return None
+    
+    @classmethod
+    def parse_file(cls, file_path: Path) -> ParseResult:
+        """
+        Parse file using appropriate parser
+        
+        Args:
+            file_path: Path to file
+        
+        Returns:
+            ParseResult with content and metadata
+        
+        Raises:
+            ParsingException if no parser found
+        """
+        from app.core.exceptions import ParsingException
+        
+        parser = cls.get_parser(file_path)
+        if parser is None:
+            raise ParsingException(
+                f"No parser found for file: {file_path}",
+                parser_type="unknown",
+                file_path=str(file_path)
+            )
+        return parser.parse(file_path)
+    
+    @classmethod
+    def get_supported_extensions(cls) -> set:
+        """Get all supported file extensions across all parsers"""
+        cls._initialize_parsers()
+        
+        extensions = set()
+        for parser in cls._parsers:
+            if hasattr(parser, 'supported_extensions'):
+                extensions.update(parser.supported_extensions)
+            elif hasattr(parser, 'get_supported_extensions'):
+                extensions.update(parser.get_supported_extensions())
+        return extensions
     
     @classmethod
     def list_supported_types(cls) -> List[str]:
         """List all supported file types"""
-        return list(cls._parsers.keys())
+        return sorted(list(cls.get_supported_extensions()))

@@ -1,19 +1,16 @@
 """
 Document Parsers Package
 
-Production-grade parsers using state-of-the-art tools:
-- PDF: PyMuPDF + pdfplumber (hybrid approach)
-- Images: PaddleOCR (better than Tesseract)
-- DOCX: python-docx + mammoth
-- Code: AST-based parsing
-- Mermaid: Specialized syntax parser
-
-Design Pattern: Strategy Pattern
-- Each parser implements parse() method
-- Returns structured ParseResult
-- Handles errors gracefully with fallbacks
+Production-grade parsers for multiple document types:
+- PDF: PyMuPDF + pdfplumber hybrid
+- Images: PaddleOCR + EasyOCR fallback
+- DOCX: python-docx + mammoth + docx2txt
+- Text/Markdown: Encoding detection + structure preservation
+- Code: AST-based parsing for Python, JS, Java, C++, etc.
+- Mermaid: Diagram syntax parsing
 """
-from app.parsers.base import BaseParser, ParseResult
+
+from app.parsers.base import BaseParser, ParseResult, ParserFactory
 from app.parsers.pdf_parser import PDFParser
 from app.parsers.image_parser import ImageParser
 from app.parsers.docx_parser import DOCXParser
@@ -22,12 +19,13 @@ from app.parsers.code_parser import CodeParser
 from app.parsers.mermaid_parser import MermaidParser
 
 __all__ = [
-    "BaseParser",
-    "ParseResult",
-    "PDFParser",
-    "ImageParser",
-    "DOCXParser",
-    "TextParser",
-    "CodeParser",
-    "MermaidParser",
+    'BaseParser',
+    'ParseResult',
+    'ParserFactory',
+    'PDFParser',
+    'ImageParser',
+    'DOCXParser',
+    'TextParser',
+    'CodeParser',
+    'MermaidParser',
 ]
