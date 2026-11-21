@@ -244,24 +244,60 @@ class DOCXParser(BaseParser):
         Preserves: bold, italic, underline
         Format: **bold** *italic* __underline__
         
+        Handles hyperlinks: Includes runs inside w:hyperlink elements
+        
         Time Complexity: O(n) where n = runs in paragraph
         """
         result = []
         
-        for run in paragraph.runs:
-            text = run.text
-            
-            # Apply formatting markers
-            if run.bold:
-                text = f"**{text}**"
-            if run.italic:
-                text = f"*{text}*"
-            if run.underline:
-                text = f"__{text}__"
-            
-            result.append(text)
+        # Iterate through all content including hyperlinks
+        # paragraph.runs only returns direct children, excluding hyperlinks
+        try:
+            # Try to use iter_inner_content if available (newer python-docx)
+            if hasattr(paragraph, 'iter_inner_content'):
+                for item in paragraph.iter_inner_content():
+                    if hasattr(item, 'runs'):
+                        # It's a hyperlink, process its runs
+                        for run in item.runs:
+                            text = self._format_run_text(run)
+                            result.append(text)
+                    elif hasattr(item, 'text'):
+                        # It's a run
+                        text = self._format_run_text(item)
+                        result.append(text)
+            else:
+                # Fallback: use standard paragraph.runs
+                # This will miss hyperlinks but is better than nothing
+                for run in paragraph.runs:
+                    text = self._format_run_text(run)
+                    result.append(text)
+        except Exception:
+            # Final fallback: plain text
+            return paragraph.text
         
         return ''.join(result)
+    
+    def _format_run_text(self, run) -> str:
+        """
+        Format a single run with markers
+        
+        Args:
+            run: A docx run object
+            
+        Returns:
+            Formatted text string
+        """
+        text = run.text
+        
+        # Apply formatting markers
+        if run.bold:
+            text = f"**{text}**"
+        if run.italic:
+            text = f"*{text}*"
+        if run.underline:
+            text = f"__{text}__"
+        
+        return text
     
     def _extract_table_data(self, table) -> List[List[str]]:
         """
