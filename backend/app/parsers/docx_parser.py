@@ -15,6 +15,7 @@ Features:
 Time Complexity: O(n) where n = document elements
 """
 import time
+import re
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
@@ -130,19 +131,22 @@ class DOCXParser(BaseParser):
                 if not text:
                     continue
                 
-                # Detect headings
-                if para.style.name.startswith('Heading'):
+                # Detect headings with proper regex pattern
+                heading_match = re.match(r'Heading\s*(\d+)$', para.style.name)
+                if heading_match:
                     # Save previous section
                     if current_section:
                         sections.append(current_section)
                     
                     # Start new section
-                    level = int(para.style.name.replace('Heading', '').strip() or '1')
+                    level = int(heading_match.group(1))
                     current_section = {
                         'title': text,
                         'level': level,
                         'content': [],
                     }
+                    # IMPORTANT: Add heading text to extracted text
+                    all_text.append(text)
                 else:
                     # Add to current section or main content
                     if preserve_formatting:
