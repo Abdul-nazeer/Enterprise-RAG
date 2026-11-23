@@ -39,18 +39,9 @@ class MermaidParser(BaseParser):
     
     def can_parse(self, file_path: Path) -> bool:
         """Check if file is a Mermaid diagram."""
-        if file_path.suffix.lower() in self.supported_extensions:
-            return True
-        
-        # Check .md files that might contain mermaid
-        if file_path.suffix.lower() == '.md':
-            try:
-                content = file_path.read_text(encoding='utf-8')
-                return '```mermaid' in content.lower()
-            except Exception:
-                return False
-        
-        return False
+        # Only parse dedicated Mermaid files (.mmd, .mermaid)
+        # Let TextParser handle .md files with embedded diagrams
+        return file_path.suffix.lower() in self.supported_extensions
     
     def parse(self, file_path: Path) -> ParseResult:
         """Parse Mermaid diagram file."""
