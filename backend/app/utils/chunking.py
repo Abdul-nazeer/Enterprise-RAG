@@ -512,9 +512,19 @@ class CodeChunker(ChunkingStrategy):
         """Split code into logical units (functions, classes)"""
         # Python: split by def and class
         if language == 'python':
-            pattern = r'(^(?:def |class |@\w+\s+def |@\w+\s+class ).+?)(?=^(?:def |class |@\w+)|$)'
+            # Match from declaration to next declaration or end of input
+            # Use \Z for actual end-of-input boundary (not line ending)
+            pattern = r'(^(?:def |class |@\w+\s+def |@\w+\s+class ).+?)(?=^(?:def |class |@\w+)|\Z)'
             units = re.findall(pattern, code, re.MULTILINE | re.DOTALL)
+            
             if units:
+                # Also capture any imports/constants before first declaration
+                first_match = re.search(r'^(?:def |class |@\w+)', code, re.MULTILINE)
+                if first_match and first_match.start() > 0:
+                    # There's content before first declaration
+                    prefix = code[:first_match.start()].strip()
+                    if prefix:
+                        units.insert(0, prefix)
                 return units
         
         # JavaScript: split by function and class
