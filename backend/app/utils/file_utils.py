@@ -153,8 +153,8 @@ def detect_file_type(file_path: Path) -> str:
         try:
             text = content.decode('utf-8')
             
-            # Check for Mermaid syntax
-            if 'graph' in text.lower() or 'flowchart' in text.lower() or 'sequenceDiagram' in text:
+            # Check for Mermaid syntax at line boundaries
+            if re.search(r'^\s*(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|journey|gitGraph)', text, re.MULTILINE):
                 detections.append((DocumentType.MERMAID, 0.9, 'content_analysis'))
             # Check for Markdown syntax
             elif any(marker in text for marker in ['# ', '## ', '```', '[', '](', '**', '__']):
@@ -167,9 +167,21 @@ def detect_file_type(file_path: Path) -> str:
         except:
             detections.append((DocumentType.TXT, 0.6, 'text_fallback'))
     
-    # Return detection with highest confidence (as string)
+    # Return detection with highest confidence
+    # Priority: Binary signatures > Extension > Content heuristics
     if detections:
-        best_detection = max(detections, key=lambda x: x[1])
+        # Sort by confidence, but prefer magic bytes and extension over content analysis
+        # This prevents ambiguous content patterns from overriding known formats
+        def detection_priority(detection):
+            doc_type, confidence, method = detection
+            # Give priority boost to magic bytes and extension methods
+            if method in ['magic_bytes', 'extension']:
+                priority = confidence + 0.2
+            else:
+                priority = confidence
+            return priority
+        
+        best_detection = max(detections, key=detection_priority)
         return str(best_detection[0].value) if hasattr(best_detection[0], 'value') else str(best_detection[0])
     
     # Fallback: UNKNOWN
@@ -281,6 +293,11 @@ def detect_encoding(file_path: str) -> str:
         result = chardet.detect(raw_data)
         encoding = result['encoding']
         confidence = result['confidence']
+        
+        # ASCII is a subset of UTF-8, so always use UTF-8 for ASCII
+        # This prevents decoding errors with non-ASCII characters later in file
+        if encoding and encoding.lower() == 'ascii':
+            return 'utf-8'
         
         # Fallback to utf-8 if low confidence
         if confidence < 0.7:
