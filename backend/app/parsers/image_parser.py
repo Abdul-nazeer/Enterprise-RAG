@@ -44,8 +44,12 @@ class ImageParser(BaseParser):
     def __init__(self):
         super().__init__()
         self.supported_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.tif', '.webp'}
-        self._ocr_engine = None
-        self._easyocr_reader = None
+        # Cache OCR engines per language to avoid reinitialization
+        self._ocr_engines = {}  # language -> PaddleOCR instance
+        self._easyocr_readers = {}  # language -> EasyOCR instance
+        # Thread lock for lazy initialization (if parsers run in threads)
+        import threading
+        self._lock = threading.Lock()
     
     def can_parse(self, file_path: Path) -> bool:
         """Check if file is an image."""
@@ -169,21 +173,14 @@ class ImageParser(BaseParser):
         Returns: ParseResult with extracted text and bounding boxes
         """
         try:
-            # Lazy load PaddleOCR (heavy import)
-            if self._ocr_engine is None:
-                from paddleocr import PaddleOCR
-                self._ocr_engine = PaddleOCR(
-                    use_angle_cls=True,  # Detect text rotation
-                    lang=language,
-                    use_gpu=False,  # Set to True if GPU available
-                    show_log=False,
-                )
+            # Get or create OCR engine for this language
+            ocr_engine = self._get_paddle_engine(language)
             
             # Convert PIL to numpy array
             img_array = np.array(image)
             
             # Run OCR
-            ocr_result = self._ocr_engine.ocr(img_array, cls=True)
+            ocr_result = ocr_engine.ocr(img_array, cls=True)
             
             # Parse results
             lines = []
@@ -227,6 +224,55 @@ class ImageParser(BaseParser):
         except Exception as e:
             return self._create_error_result(f"PaddleOCR failed: {str(e)}")
     
+    def _get_paddle_engine(self, language: str):
+        """
+        Get or create PaddleOCR engine for specific language
+        
+        Thread-safe lazy initialization with caching per language
+        
+        Args:
+            language: Language code (e.g., 'en', 'fr', 'zh')
+            
+        Returns:
+            PaddleOCR instance for the specified language
+        """
+        with self._lock:
+            if language not in self._ocr_engines:
+                try:
+                    from paddleocr import PaddleOCR
+                    self._ocr_engines[language] = PaddleOCR(
+                        use_angle_cls=True,  # Detect text rotation
+                        lang=language,
+                        use_gpu=False,  # Set to True if GPU available
+                        show_log=False,
+                    )
+                except Exception as e:
+                    raise RuntimeError(f"Failed to initialize PaddleOCR for language '{language}': {e}")
+            
+            return self._ocr_engines[language]
+    
+    def _get_easyocr_reader(self, language: str):
+        """
+        Get or create EasyOCR reader for specific language
+        
+        Thread-safe lazy initialization with caching per language
+        
+        Args:
+            language: Language code (e.g., 'en', 'fr', 'zh')
+            
+        Returns:
+            EasyOCR Reader instance for the specified language
+        """
+        with self._lock:
+            if language not in self._easyocr_readers:
+                try:
+                    import easyocr
+                    self._easyocr_readers[language] = easyocr.Reader([language])
+                except Exception as e:
+                    raise RuntimeError(f"Failed to initialize EasyOCR for language '{language}': {e}")
+            
+            return self._easyocr_readers[language]
+    
     def _ocr_with_easyocr(
         self,
         image: Image.Image,
@@ -243,16 +289,14 @@ class ImageParser(BaseParser):
         Returns: ParseResult with extracted text
         """
         try:
-            # Lazy load EasyOCR
-            if self._easyocr_reader is None:
-                import easyocr
-                self._easyocr_reader = easyocr.Reader([language])
+            # Get or create EasyOCR reader for this language
+            reader = self._get_easyocr_reader(language)
             
             # Convert PIL to numpy array
             img_array = np.array(image)
             
             # Run OCR
-            ocr_result = self._easyocr_reader.readtext(img_array)
+            ocr_result = reader.readtext(img_array)
             
             # Parse results
             lines = []
@@ -323,29 +367,28 @@ class ImageParser(BaseParser):
     
     def detect_text_regions(
         self,
-        image: Image.Image
+        image: Image.Image,
+        language: str = 'en'
     ) -> List[Tuple[int, int, int, int]]:
         """
         Detect text regions in image (bounding boxes)
         
         Use case: Layout analysis before OCR
         
+        Args:
+            image: PIL Image
+            language: Language code for OCR engine
+        
         Returns: List of (x1, y1, x2, y2) coordinates
         
         Time Complexity: O(w*h)
         """
         try:
-            if self._ocr_engine is None:
-                from paddleocr import PaddleOCR
-                self._ocr_engine = PaddleOCR(
-                    use_angle_cls=True,
-                    lang='en',
-                    use_gpu=False,
-                    show_log=False,
-                )
+            # Get OCR engine for the specified language
+            ocr_engine = self._get_paddle_engine(language)
             
             img_array = np.array(image)
-            result = self._ocr_engine.ocr(img_array, cls=True)
+            result = ocr_engine.ocr(img_array, cls=True)
             
             boxes = []
             if result and result[0]:
